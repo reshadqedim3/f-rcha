@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sadə Paint</title>
+  <style>
+    :root { --bg:#63b0b8; --panel:#111827; --muted:#334155; --text:#e5e7eb; }
+    *{box-sizing:border-box}
+    body{margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; background:var(--bg); color:var(--text);}
+    .wrap{max-width:1000px; margin:24px auto; padding:0 16px}
+    .toolbar{display:flex; flex-wrap:wrap; gap:3px; align-items:center; background:#dbd797; border:1px solid #1f2937; padding:6px; border-radius:12px; position:sticky; top:12px; z-index:5}
+    .toolbar .group{display:flex; gap:10px; align-items:center}
+    .btn{border:1px solid #374151; background:#1f2937; color:#e5e7eb; padding:8px 12px; border-radius:10px; cursor:pointer; transition:transform .05s ease;}
+    .btn:active{transform:translateY(1px)}
+    .btn.primary{background:#2563eb; border-color:#1d4ed8}
+    .btn.warn{background:#dc2626; border-color:#b91c1c}
+    label{font-size:14px; color:#cbd5e1}
+    .color-btn{width:36px; height:36px; border-radius:50%; border:none; cursor:pointer; transition:transform .05s ease;}
+    .color-btn:active{transform:scale(0.9)}
+    .canvas-wrap{margin-top:12px}
+    .scroll-box{position:relative; height:75vh; overflow:auto; border-radius:12px; border:1px solid #1f2937; background:#fff}
+    canvas.drawing{display:block; width:100%; height:auto; background:#fff;}
+    canvas.cursor{position:absolute; inset:0; pointer-events:none;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="toolbar" role="toolbar" aria-label="Rəsm alətləri">
+      <div class="group">
+        <button id="modeBtn" class="btn primary" title="Çəkmə/Silmə rejimi">✏️ Çəkmə rejimi</button>
+      </div>
+      <div class="group">
+        
+        <button class="color-btn" style="background:black" data-color="#000000" title="Qara"></button>
+        <button class="color-btn" style="background:#dc2626" data-color="#dc2626" title="Qırmızı"></button>
+        <button class="color-btn" style="background:#2563eb" data-color="#2563eb" title="Göy"></button>
+      </div>
+      <div class="group">
+        <label for="size"> <span id="sizeVal">8</span> px</label>
+        <input id="size" type="range" min="1" max="60" value="8" />
+      </div>
+      <div class="group" style="margin-left:auto">
+        <button id="growBtn" class="btn" title="Hündürlüyü artır">⬇️ Səhifə əlavə et</button>
+        <button id="clearBtn" class="btn warn" title="Hamısını sil">🗑️ Təmizlə</button>
+        <button id="saveBtn" class="btn" title="Şəkil kimi saxla">💾 PNG kimi saxla</button>
+      </div>
+    </div>
+
+    <div class="canvas-wrap">
+      <div id="scrollBox" class="scroll-box">
+        <canvas id="pad" class="drawing" width="1700" height="900"></canvas>
+        <canvas id="cursor" class="cursor" width="1700" height="900"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('pad');
+    const ctx = canvas.getContext('2d');
+    const cursorCanvas = document.getElementById('cursor');
+    const cctx = cursorCanvas.getContext('2d');
+    const scrollBox = document.getElementById('scrollBox');
+
+    const modeBtn = document.getElementById('modeBtn');
+    const sizeEl  = document.getElementById('size');
+    const sizeVal = document.getElementById('sizeVal');
+    const clearBtn= document.getElementById('clearBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const growBtn = document.getElementById('growBtn');
+    const colorBtns = document.querySelectorAll('.color-btn');
+
+    let isErasing = false;
+    let drawing = false;
+    let currentColor = '#000000';
+
+    function paintWhiteBackgroundArea(yStart, height){
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, yStart, canvas.width, height);
+      ctx.restore();
+    }
+
+    // İlk ağ fon
+    paintWhiteBackgroundArea(0, canvas.height);
+
+    function applyStrokeStyle(){
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = Number(sizeEl.value);
+      ctx.strokeStyle = currentColor;
+      ctx.globalCompositeOperation = isErasing ? 'destination-out' : 'source-over';
+    }
+
+    colorBtns.forEach(btn => btn.addEventListener('click', () => {
+      currentColor = btn.dataset.color;
+      applyStrokeStyle();
+    }));
+
+    sizeEl.addEventListener('input', () => { sizeVal.textContent = sizeEl.value; drawCursor(lastPointer.x, lastPointer.y); });
+
+    modeBtn.addEventListener('click', () => {
+      isErasing = !isErasing;
+      modeBtn.textContent = isErasing ? '🧽 Silmə rejimi' : '✏️ Çəkmə rejimi';
+      modeBtn.classList.toggle('primary', !isErasing);
+      applyStrokeStyle();
+      drawCursor(lastPointer.x, lastPointer.y);
+    });
+
+    clearBtn.addEventListener('click', () => {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      paintWhiteBackgroundArea(0, canvas.height);
+      clearCursor();
+    });
+
+    saveBtn.addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.download = 'sekil.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+
+    // Hündürlüyü artır: hər dəfə cari hündürlük qədər böyüt
+    growBtn.addEventListener('click', () => {
+      const oldW = canvas.width;
+      const oldH = canvas.height;
+      // Köhnə şəkli saxla
+      const temp = document.createElement('canvas');
+      temp.width = oldW; temp.height = oldH;
+      temp.getContext('2d').drawImage(canvas, 0, 0);
+      // Yeni ölçü
+      const newH = oldH + oldH; // + indiki hündürlük
+      canvas.height = newH; // height dəyişəndə state sıfırlanır
+      canvas.width = oldW;  // eni sabit saxlayırıq
+      // Ağ fonu doldur və köhnəni yuxarıya qoy
+      paintWhiteBackgroundArea(0, newH);
+      ctx.drawImage(temp, 0, 0);
+      // Kursor layını da böyüt
+      cursorCanvas.height = newH;
+      cursorCanvas.width = oldW;
+      // CSS ölçülərini yenilə
+      resizeCanvasCSS();
+      // Yeni hissəyə fokus üçün aşağıya scroll et
+      requestAnimationFrame(() => { scrollBox.scrollTop = scrollBox.scrollHeight; });
+    });
+
+    function getPos(evt){
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (evt.clientX - rect.left) * scaleX;
+      const y = (evt.clientY - rect.top) * scaleY;
+      return {x,y};
+    }
+
+    let lastPointer = {x:-1, y:-1};
+
+    function drawCursor(px, py){
+      cctx.clearRect(0,0,cursorCanvas.width,cursorCanvas.height);
+      if(px < 0 || py < 0) return;
+      const r = Number(sizeEl.value)/2;
+      cctx.save();
+      cctx.setLineDash([6,6]);
+      cctx.lineWidth = 1.5;
+      cctx.strokeStyle = isErasing ? '#64748b' : '#0f172a';
+      cctx.beginPath();
+      cctx.arc(px, py, r, 0, Math.PI*2);
+      cctx.stroke();
+      cctx.restore();
+    }
+    function clearCursor(){ cctx.clearRect(0,0,cursorCanvas.width,cursorCanvas.height); }
+
+    function pointerDown(e){
+      e.preventDefault();
+      drawing = true;
+      applyStrokeStyle();
+      const {x,y} = getPos(e);
+      lastPointer = {x,y};
+      ctx.beginPath();
+      ctx.moveTo(x,y);
+      drawCursor(x,y);
+    }
+
+    function pointerMove(e){
+      const {x,y} = getPos(e);
+      lastPointer = {x,y};
+      drawCursor(x,y);
+      if(!drawing) return;
+      ctx.lineTo(x,y);
+      ctx.stroke();
+    }
+
+    function pointerUp(){ drawing = false; }
+
+    canvas.addEventListener('pointerdown', pointerDown);
+    canvas.addEventListener('pointermove', pointerMove);
+    canvas.addEventListener('pointerleave', clearCursor);
+    window.addEventListener('pointerup', pointerUp);
+
+    function syncOverlaySize(){
+      cursorCanvas.style.width = canvas.style.width;
+      // Hündürlüyü piksel nisbətinə görə hesablayırıq
+      const cssW = parseFloat(getComputedStyle(canvas).width);
+      const cssH = cssW * (canvas.height / canvas.width);
+      canvas.style.height = cssH + 'px';
+      cursorCanvas.style.height = canvas.style.height;
+    }
+
+    function resizeCanvasCSS(){
+      const maxW = Math.min(window.innerWidth - 32, 1000 - 32);
+      const cssW = Math.max(280, maxW);
+      canvas.style.width = cssW + 'px';
+      syncOverlaySize();
+    }
+    resizeCanvasCSS();
+    window.addEventListener('resize', resizeCanvasCSS);
+  </script>
+</body>
+</html>
