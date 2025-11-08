@@ -12,9 +12,9 @@
     .wrap{max-width:none; margin:0; padding:0}
 
     /* Toolbar sabit */
-    .toolbar{position:fixed; left:0; right:0; top:0; z-index:10; display:flex; gap:10px; align-items:center; background:var(--panel); border-bottom:1px solid #1f2937; padding:10px 12px; height:var(--toolbarH)}
-    .toolbar .group{display:flex; gap:10px; align-items:center}
-    .btn{border:1px solid #374151; background:#1f2937; color:#e5e7eb; padding:8px 12px; border-radius:10px; cursor:pointer; transition:transform .05s ease;}
+    .toolbar{position:fixed; left:0; right:0; top:0; z-index:10; display:flex; gap:5px; align-items:center; background:var(--panel); border-bottom:1px solid #4f2937; padding:5px 12px; height:var(--toolbarH)}
+    .toolbar .group{display:flex; gap:5px; align-items:center}
+    .btn{border:1px solid #374151; background:#1f2937; color:#55e7eb; padding:8px 12px; border-radius:10px; cursor:pointer; transition:transform .05s ease;}
     .btn:active{transform:translateY(1px)}
     .btn.primary{background:#2563eb; border-color:#1d4ed8}
     .btn.warn{background:#dc2626; border-color:#b91c1c}
@@ -49,20 +49,20 @@
     <div class="toolbar" role="toolbar" aria-label="Rəsm alətləri">
       <div class="group">
         <button id="modeBtn" class="btn primary" title="Çəkmə/Silmə">✏️ Çəkmə</button>
-        <label>Rəng:</label>
+       
         <button class="color-btn" style="background:black" data-color="#000000" title="Qara"></button>
         <button class="color-btn" style="background:#dc2626" data-color="#dc2626" title="Qırmızı"></button>
         <button class="color-btn" style="background:#2563eb" data-color="#2563eb" title="Göy"></button>
-        <label for="size">Fırça: <span id="sizeVal">8</span> px</label>
+        <label for="size"><span id="sizeVal">8</span> px</label>
         <input id="size" type="range" min="1" max="60" value="8" />
       </div>
 
       <div class="group pages" style="margin-left:auto">
         <button id="prevBtn" class="btn" title="Əvvəlki">←</button>
-        <span id="pageIndicator" class="page-indicator">Səhifə 1 / 1</span>
+        <span id="pageIndicator" class="page-indicator">1 / 1</span>
         <button id="nextBtn" class="btn" title="Növbəti">→</button>
-        <button id="addPageBtn" class="btn" title="Yeni səhifə">➕ Səhifə əlavə et</button>
-        <button id="clearBtn" class="btn warn" title="Cari səhifəni təmizlə">🗑️ Təmizlə</button>
+        <button id="addPageBtn" class="btn" title="Yeni səhifə">➕ </button>
+        <button id="clearBtn" class="btn warn" title="Cari səhifəni təmizlə">🗑️ </button>
         <button id="savePdfBtn" class="btn" title="PDF kimi saxla">📄 PDF</button>
       </div>
     </div>
@@ -139,7 +139,7 @@
     }
 
     function updateIndicator(){
-      pageIndicator.textContent = `Səhifə ${currentPage+1} / ${pages.length}`;
+      pageIndicator.textContent = `${currentPage+1} / ${pages.length}`;
     }
 
     // İlk qurulum
