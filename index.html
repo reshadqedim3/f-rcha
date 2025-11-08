@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-  <title>Sadə Paint</title>
+  <title>Sadə Paint — Planşet üçün</title>
   <style>
     :root { --bg:#0f172a; --panel:#111827; --text:#e5e7eb; --toolbarH:64px; }
     *{box-sizing:border-box}
@@ -11,61 +11,65 @@
     body{margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; background:var(--bg); color:var(--text); overscroll-behavior:none;}
     .wrap{max-width:none; margin:0; padding:0}
 
-    /* Toolbar — mobil/iPad-də sabit qalsın */
-    .toolbar{position:fixed; left:0; right:0; top:0; z-index:10; display:flex; flex-wrap:wrap; gap:10px; align-items:center; background:var(--panel); border-bottom:1px solid #1f2937; padding:12px; height:var(--toolbarH)}
+    /* Toolbar sabit */
+    .toolbar{position:fixed; left:0; right:0; top:0; z-index:10; display:flex; gap:10px; align-items:center; background:var(--panel); border-bottom:1px solid #1f2937; padding:10px 12px; height:var(--toolbarH)}
     .toolbar .group{display:flex; gap:10px; align-items:center}
     .btn{border:1px solid #374151; background:#1f2937; color:#e5e7eb; padding:8px 12px; border-radius:10px; cursor:pointer; transition:transform .05s ease;}
     .btn:active{transform:translateY(1px)}
     .btn.primary{background:#2563eb; border-color:#1d4ed8}
     .btn.warn{background:#dc2626; border-color:#b91c1c}
     label{font-size:14px; color:#cbd5e1}
-    .color-btn{width:36px; height:36px; border-radius:50%; border:none; cursor:pointer; transition:transform .05s ease;}
-    .color-btn:active{transform:scale(0.9)}
+    .color-btn{width:32px; height:32px; border-radius:50%; border:none; cursor:pointer; transition:transform .05s ease;}
+    .color-btn:active{transform:scale(0.92)}
 
-    /* Rəsm sahəsi — tam ekran, toolbar-dan aşağı hissə */
+    /* Səhifələr naviqasiyası */
+    .pages{display:flex; align-items:center; gap:8px}
+    .page-indicator{min-width:110px; text-align:center; font-size:14px; color:#cbd5e1}
+
+    /* Rəsm sahəsi — toolbar-dan aşağı, tam ekran */
     .board{position:fixed; left:0; right:0; top:calc(var(--toolbarH) + env(safe-area-inset-top)); bottom:env(safe-area-inset-bottom); background:#fff}
 
-    /* İki canvas üst-üstə, bütün sahəni tutsun; toxunuşda səhifə sürüşməsin */
+    /* Canvases bütün sahəni tutur; toxunuşda scroll olmasın */
     canvas{position:absolute; inset:0; width:100%; height:100%; touch-action:none;}
     #pad{background:#fff}
     #cursor{pointer-events:none}
 
-    /* Mobil sıxlıq */
     @media (max-width: 600px){
       :root{ --toolbarH:72px; }
-      .toolbar{gap:8px; padding:10px}
-      .color-btn{width:32px; height:32px}
+      .toolbar{gap:8px; padding:8px 10px}
+      .color-btn{width:28px; height:28px}
+      .page-indicator{min-width:92px}
     }
   </style>
+  <!-- PDF üçün jsPDF (CDN). İnternet yoxdursa, PDF düyməsi işləmir. -->
+  <script defer src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 </head>
 <body>
   <div class="wrap">
     <div class="toolbar" role="toolbar" aria-label="Rəsm alətləri">
       <div class="group">
-        <button id="modeBtn" class="btn primary" title="Çəkmə/Silmə rejimi">✏️ Çəkmə</button>
-      </div>
-      <div class="group">
+        <button id="modeBtn" class="btn primary" title="Çəkmə/Silmə">✏️ Çəkmə</button>
         <label>Rəng:</label>
         <button class="color-btn" style="background:black" data-color="#000000" title="Qara"></button>
         <button class="color-btn" style="background:#dc2626" data-color="#dc2626" title="Qırmızı"></button>
         <button class="color-btn" style="background:#2563eb" data-color="#2563eb" title="Göy"></button>
-      </div>
-      <div class="group">
         <label for="size">Fırça: <span id="sizeVal">8</span> px</label>
         <input id="size" type="range" min="1" max="60" value="8" />
       </div>
-      <div class="group" style="margin-left:auto">
-        <!-- Hündürlüyü artır funksiyasını müvəqqəti gizlədildi -->
-        <!-- <button id="growBtn" class="btn" title="Hündürlüyü artır">⬇️ Hündürlüyü artır</button> -->
-        <button id="clearBtn" class="btn warn" title="Hamısını sil">🗑️ Təmizlə</button>
-        <button id="saveBtn" class="btn" title="Şəkil kimi saxla">💾 Saxla</button>
+
+      <div class="group pages" style="margin-left:auto">
+        <button id="prevBtn" class="btn" title="Əvvəlki">←</button>
+        <span id="pageIndicator" class="page-indicator">Səhifə 1 / 1</span>
+        <button id="nextBtn" class="btn" title="Növbəti">→</button>
+        <button id="addPageBtn" class="btn" title="Yeni səhifə">➕ Səhifə əlavə et</button>
+        <button id="clearBtn" class="btn warn" title="Cari səhifəni təmizlə">🗑️ Təmizlə</button>
+        <button id="savePdfBtn" class="btn" title="PDF kimi saxla">📄 PDF</button>
       </div>
     </div>
 
-    <!-- Tam ekran board -->
     <div id="board" class="board">
-      <canvas id="pad" width="1920" height="1080"></canvas>
-      <canvas id="cursor" width="1920" height="1080"></canvas>
+      <canvas id="pad"></canvas>
+      <canvas id="cursor"></canvas>
     </div>
   </div>
 
@@ -80,20 +84,68 @@
     const sizeEl  = document.getElementById('size');
     const sizeVal = document.getElementById('sizeVal');
     const clearBtn= document.getElementById('clearBtn');
-    const saveBtn = document.getElementById('saveBtn');
     const colorBtns = document.querySelectorAll('.color-btn');
+    const addPageBtn = document.getElementById('addPageBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const pageIndicator = document.getElementById('pageIndicator');
+    const savePdfBtn = document.getElementById('savePdfBtn');
 
     let isErasing = false;
     let drawing = false;
     let currentColor = '#000000';
     let lastPointer = {x:-1, y:-1};
 
-    function paintWhite(){
-      ctx.save(); ctx.globalCompositeOperation='source-over';
-      ctx.fillStyle = '#fff'; ctx.fillRect(0,0,pad.width,pad.height);
-      ctx.restore();
+    // 🔸 Səhifələr: hər səhifə ayrıca offscreen canvas
+    const pages = [];
+    let currentPage = 0;
+
+    // Ekrana uyğun sabit piksel ölçüsü (intrinsic size) — distort olmaması üçün
+    function initIntrinsicSize(){
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      const rect = board.getBoundingClientRect();
+      // Toolbar altında qalan real sahə qədər
+      const w = Math.max(300, Math.round(rect.width * dpr));
+      const h = Math.max(300, Math.round(rect.height * dpr));
+      // Görünən canvasi bu ölçüdə qururuq
+      pad.width = w; pad.height = h;
+      cursor.width = w; cursor.height = h;
+      // CSS 100% olduğuna görə görüntü ekranı tam doldurur; rəsmlər isə 1:1 piksel ölçüdə saxlanır
     }
-    paintWhite();
+
+    function makeBlankPage(){
+      const c = document.createElement('canvas');
+      c.width = pad.width; c.height = pad.height;
+      const cctx2 = c.getContext('2d');
+      cctx2.fillStyle = '#fff'; cctx2.fillRect(0,0,c.width,c.height);
+      return c;
+    }
+
+    function syncPadFromPage(){
+      // Cari səhifəni görünən pad-ə kopyala
+      const pg = pages[currentPage];
+      ctx.clearRect(0,0,pad.width,pad.height);
+      ctx.drawImage(pg, 0, 0);
+      clearCursor();
+      updateIndicator();
+    }
+
+    function persistPadToPage(){
+      // Pad-dəki görünəni cari səhifənin canvas-ına yaz
+      const pg = pages[currentPage];
+      const pctx = pg.getContext('2d');
+      pctx.clearRect(0,0,pg.width,pg.height);
+      pctx.drawImage(pad, 0, 0);
+    }
+
+    function updateIndicator(){
+      pageIndicator.textContent = `Səhifə ${currentPage+1} / ${pages.length}`;
+    }
+
+    // İlk qurulum
+    initIntrinsicSize();
+    pages.push(makeBlankPage());
+    syncPadFromPage();
 
     function applyStroke(){
       ctx.lineCap='round'; ctx.lineJoin='round';
@@ -102,7 +154,7 @@
       ctx.globalCompositeOperation = isErasing ? 'destination-out' : 'source-over';
     }
 
-    // Rəng/fırça
+    // Alətlər
     colorBtns.forEach(b=>b.addEventListener('click', ()=>{ currentColor=b.dataset.color; applyStroke(); drawCursor(lastPointer.x,lastPointer.y);}));
     sizeEl.addEventListener('input', ()=>{ sizeVal.textContent=sizeEl.value; drawCursor(lastPointer.x,lastPointer.y); });
 
@@ -111,13 +163,38 @@
       modeBtn.classList.toggle('primary', !isErasing); applyStroke(); drawCursor(lastPointer.x,lastPointer.y);
     });
 
-    clearBtn.addEventListener('click', ()=>{ ctx.clearRect(0,0,pad.width,pad.height); paintWhite(); clearCursor(); });
+    clearBtn.addEventListener('click', ()=>{ ctx.clearRect(0,0,pad.width,pad.height); const pg=pages[currentPage]; const pctx=pg.getContext('2d'); pctx.fillStyle='#fff'; pctx.fillRect(0,0,pg.width,pg.height); syncPadFromPage(); });
 
-    saveBtn.addEventListener('click', ()=>{
-      const a=document.createElement('a'); a.download='sekil.png'; a.href=pad.toDataURL('image/png'); a.click();
+    addPageBtn.addEventListener('click', ()=>{
+      persistPadToPage();
+      pages.push(makeBlankPage());
+      currentPage = pages.length - 1;
+      syncPadFromPage();
     });
 
-    // Koordinat çevirmə (board daxilində, hər zaman tam ekran sahə üzrə)
+    prevBtn.addEventListener('click', ()=>{
+      if(currentPage>0){ persistPadToPage(); currentPage--; syncPadFromPage(); }
+    });
+    nextBtn.addEventListener('click', ()=>{
+      if(currentPage < pages.length-1){ persistPadToPage(); currentPage++; syncPadFromPage(); }
+    });
+
+    // PDF kimi saxla (jsPDF lazımdır)
+    savePdfBtn.addEventListener('click', async ()=>{
+      persistPadToPage();
+      if(!(window.jspdf && window.jspdf.jsPDF)) { alert('PDF üçün internet bağlantısı tələb olunur.'); return; }
+      const { jsPDF } = window.jspdf;
+      const pg0 = pages[0];
+      const pdf = new jsPDF({orientation: pg0.width>=pg0.height?'landscape':'portrait', unit:'px', format:[pg0.width, pg0.height]});
+      for(let i=0;i<pages.length;i++){
+        if(i>0) pdf.addPage([pg0.width, pg0.height], pg0.width>=pg0.height?'landscape':'portrait');
+        const data = pages[i].toDataURL('image/png');
+        pdf.addImage(data, 'PNG', 0, 0, pg0.width, pg0.height);
+      }
+      pdf.save('rəsmlər.pdf');
+    });
+
+    // Koordinat çevirmə
     function getPos(evt){
       const rect = pad.getBoundingClientRect();
       const scaleX = pad.width / rect.width;
@@ -135,7 +212,7 @@
     }
     function clearCursor(){ cctx.clearRect(0,0,cursor.width,cursor.height); }
 
-    // iOS/Android: toxunuşda səhifə sürüşməsin
+    // Səhifə sürüşməsinin qarşısı
     ['touchstart','touchmove','gesturestart'].forEach(ev=>{
       board.addEventListener(ev, e=>{ if(drawing) e.preventDefault(); }, {passive:false});
     });
@@ -149,24 +226,15 @@
       const {x,y}=getPos(e); lastPointer={x,y}; drawCursor(x,y);
       if(!drawing) return; ctx.lineTo(x,y); ctx.stroke();
     }
-    function pointerUp(){ drawing=false; document.body.style.touchAction=''; }
+    function pointerUp(){ drawing=false; document.body.style.touchAction=''; persistPadToPage(); }
 
-    // Pointer Events hər yerdə
     pad.addEventListener('pointerdown', pointerDown);
     pad.addEventListener('pointermove', pointerMove);
     pad.addEventListener('pointerleave', clearCursor);
     window.addEventListener('pointerup', pointerUp);
 
-    // Dinamik ölçülənmə: cihazın görünən hündürlüyü (adress bar daxil)
-    function fitToBoard(){
-      // CSS ölçüləri artıq 100% doldurur; yalnız kursor canvas-ın piksel ölçüsünü pad-lə eyniləşdirək
-      cursor.width = pad.width; cursor.height = pad.height;
-    }
-    fitToBoard();
-
-    // iOS address-bar animasiyaları üçün 100dvh uyğunlaşması
-    const ro = new ResizeObserver(()=>{ fitToBoard(); });
-    ro.observe(board);
+    // Ekran orientasiyası dəyişsə də, intrinsic ölçünü dəyişmirik (distortion olmasın)
+    window.addEventListener('resize', ()=>{ /* yalnız vizual ölçü dəyişir; koordinat xəritələnməsi rect-dən gəlir */ });
   </script>
 </body>
 </html>
