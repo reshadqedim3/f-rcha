@@ -12,9 +12,9 @@
     .wrap{max-width:none; margin:0; padding:0}
 
     /* Toolbar sabit */
-    .toolbar{position:fixed; left:0; right:0; top:0; z-index:10; display:flex; gap:5px; align-items:center; background:var(--panel); border-bottom:1px solid #4f2937; padding:5px 12px; height:var(--toolbarH)}
-    .toolbar .group{display:flex; gap:5px; align-items:center}
-    .btn{border:1px solid #374151; background:#1f2937; color:#55e7eb; padding:8px 12px; border-radius:10px; cursor:pointer; transition:transform .05s ease;}
+    .toolbar{position:fixed; left:0; right:0; top:0; z-index:10; display:flex; gap:10px; align-items:center; background:var(--panel); border-bottom:1px solid #1f2937; padding:10px 12px; height:var(--toolbarH)}
+    .toolbar .group{display:flex; gap:10px; align-items:center}
+    .btn{border:1px solid #374151; background:#1f2937; color:#e5e7eb; padding:8px 12px; border-radius:10px; cursor:pointer; transition:transform .05s ease;}
     .btn:active{transform:translateY(1px)}
     .btn.primary{background:#2563eb; border-color:#1d4ed8}
     .btn.warn{background:#dc2626; border-color:#b91c1c}
@@ -49,7 +49,7 @@
     <div class="toolbar" role="toolbar" aria-label="Rəsm alətləri">
       <div class="group">
         <button id="modeBtn" class="btn primary" title="Çəkmə/Silmə">✏️ Çəkmə</button>
-       
+        
         <button class="color-btn" style="background:black" data-color="#000000" title="Qara"></button>
         <button class="color-btn" style="background:#dc2626" data-color="#dc2626" title="Qırmızı"></button>
         <button class="color-btn" style="background:#2563eb" data-color="#2563eb" title="Göy"></button>
@@ -61,9 +61,9 @@
         <button id="prevBtn" class="btn" title="Əvvəlki">←</button>
         <span id="pageIndicator" class="page-indicator">1 / 1</span>
         <button id="nextBtn" class="btn" title="Növbəti">→</button>
-        <button id="addPageBtn" class="btn" title="Yeni səhifə">➕ </button>
-        <button id="clearBtn" class="btn warn" title="Cari səhifəni təmizlə">🗑️ </button>
-        <button id="savePdfBtn" class="btn" title="PDF kimi saxla">📄 PDF</button>
+        <button id="addPageBtn" class="btn" title="Yeni səhifə"> + </button>
+        <button id="clearBtn" class="btn warn" title="Cari səhifəni təmizlə">🗑️</button>
+        <button id="savePdfBtn" class="btn" title="PDF kimi saxla">📄</button>
       </div>
     </div>
 
@@ -100,29 +100,36 @@
     const pages = [];
     let currentPage = 0;
 
+    // 🔧 Antialiasing (hamarlama) — həm əsas, həm də kursor kontekstində
+    function enableSmoothing(){
+      ctx.imageSmoothingEnabled = true;
+      cctx.imageSmoothingEnabled = true;
+      // Quality hint (dəstək verən brauzerlərdə)
+      ctx.imageSmoothingQuality = 'high';
+      cctx.imageSmoothingQuality = 'high';
+    }
+
     // Ekrana uyğun sabit piksel ölçüsü (intrinsic size) — distort olmaması üçün
     function initIntrinsicSize(){
       const dpr = Math.max(1, window.devicePixelRatio || 1);
       const rect = board.getBoundingClientRect();
-      // Toolbar altında qalan real sahə qədər
       const w = Math.max(300, Math.round(rect.width * dpr));
       const h = Math.max(300, Math.round(rect.height * dpr));
-      // Görünən canvasi bu ölçüdə qururuq
       pad.width = w; pad.height = h;
       cursor.width = w; cursor.height = h;
-      // CSS 100% olduğuna görə görüntü ekranı tam doldurur; rəsmlər isə 1:1 piksel ölçüdə saxlanır
+      enableSmoothing();
     }
 
     function makeBlankPage(){
       const c = document.createElement('canvas');
       c.width = pad.width; c.height = pad.height;
       const cctx2 = c.getContext('2d');
+      cctx2.imageSmoothingEnabled = true; // ehtiyat üçün
       cctx2.fillStyle = '#fff'; cctx2.fillRect(0,0,c.width,c.height);
       return c;
     }
 
     function syncPadFromPage(){
-      // Cari səhifəni görünən pad-ə kopyala
       const pg = pages[currentPage];
       ctx.clearRect(0,0,pad.width,pad.height);
       ctx.drawImage(pg, 0, 0);
@@ -131,7 +138,6 @@
     }
 
     function persistPadToPage(){
-      // Pad-dəki görünəni cari səhifənin canvas-ına yaz
       const pg = pages[currentPage];
       const pctx = pg.getContext('2d');
       pctx.clearRect(0,0,pg.width,pg.height);
@@ -185,13 +191,14 @@
       if(!(window.jspdf && window.jspdf.jsPDF)) { alert('PDF üçün internet bağlantısı tələb olunur.'); return; }
       const { jsPDF } = window.jspdf;
       const pg0 = pages[0];
-      const pdf = new jsPDF({orientation: pg0.width>=pg0.height?'landscape':'portrait', unit:'px', format:[pg0.width, pg0.height]});
+      const isLandscape = pg0.width>=pg0.height;
+      const pdf = new jsPDF({orientation: isLandscape?'landscape':'portrait', unit:'px', format:[pg0.width, pg0.height]});
       for(let i=0;i<pages.length;i++){
-        if(i>0) pdf.addPage([pg0.width, pg0.height], pg0.width>=pg0.height?'landscape':'portrait');
+        if(i>0) pdf.addPage([pg0.width, pg0.height], isLandscape?'landscape':'portrait');
         const data = pages[i].toDataURL('image/png');
         pdf.addImage(data, 'PNG', 0, 0, pg0.width, pg0.height);
       }
-      pdf.save('rəsmlər.pdf');
+      pdf.save('resmler.pdf');
     });
 
     // Koordinat çevirmə
@@ -233,8 +240,8 @@
     pad.addEventListener('pointerleave', clearCursor);
     window.addEventListener('pointerup', pointerUp);
 
-    // Ekran orientasiyası dəyişsə də, intrinsic ölçünü dəyişmirik (distortion olmasın)
-    window.addEventListener('resize', ()=>{ /* yalnız vizual ölçü dəyişir; koordinat xəritələnməsi rect-dən gəlir */ });
+    // Orientation dəyişsə belə, intrinsic ölçü sabit saxlanılır (distortion olmasın)
+    window.addEventListener('resize', ()=>{ /* yalnız vizual ölçü dəyişir */ });
   </script>
 </body>
 </html>
